@@ -11,7 +11,7 @@ const npmCmd = isWindows ? 'npm.cmd' : 'npm';
 function runInstall(dirName) {
   const targetDir = path.join(rootDir, dirName);
   console.log(`\n=== Installing dependencies in ${dirName} (${targetDir}) ===`);
-  const result = spawnSync(npmCmd, ['install'], {
+  const result = spawnSync(npmCmd, ['install', '--include=dev'], {
     cwd: targetDir,
     stdio: 'inherit',
     shell: true,
