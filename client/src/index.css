@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. Channels are space-separated RGB so Tailwind opacity modifiers keep working.
+   Palette: warm paper neutrals + navy accent. A dark theme only needs these variables redefined. */
+:root {
+  --c-slate-50: 247 246 243;   /* canvas */
+  --c-slate-100: 239 237 232;
+  --c-slate-200: 230 227 221;  /* hairline border */
+  --c-slate-300: 211 207 199;  /* control border */
+  --c-slate-400: 140 134 123;  /* faint text */
+  --c-slate-500: 107 102 94;   /* muted text */
+  --c-slate-600: 85 81 74;
+  --c-slate-700: 63 60 55;
+  --c-slate-800: 42 40 37;
+  --c-slate-900: 31 29 26;     /* text */
+  --c-brand-50: 233 237 244;
+  --c-brand-100: 217 224 236;
+  --c-brand-500: 46 76 130;
+  --c-brand-600: 31 58 104;    /* accent */
+  --c-brand-700: 24 46 84;
+}
+
+@layer base {
+  html { font-size: 14px; -webkit-text-size-adjust: 100%; }
+  body { @apply bg-slate-50 font-sans text-slate-900 antialiased; }
+  b, strong { @apply font-medium; }
+  h1, h2, h3 { @apply tracking-tight; }
+  table, time, .tnum { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid rgb(var(--c-brand-500)); outline-offset: 2px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }
+  ::selection { background: rgb(var(--c-brand-100)); }
+  input[type='checkbox'] { @apply h-4 w-4 cursor-pointer rounded border-slate-300 accent-brand-600; }
+}
+
+@layer components {
+  .input { @apply w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm leading-5 text-slate-900 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-100 disabled:text-slate-500 disabled:hover:border-slate-300; }
+  .btn { @apply inline-flex h-8 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn[aria-busy='true']::before { content: ''; width: 13px; height: 13px; border-radius: 9999px; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.7s linear infinite; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-secondary { @apply btn border border-slate-300 bg-white text-slate-800 hover:bg-slate-50; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900; }
+  .card { @apply rounded-lg border border-slate-200 bg-white; }
+  .kbd { @apply inline-flex min-w-[1.25rem] items-center justify-center rounded border border-slate-300 bg-white px-1 font-sans text-[11px] leading-4 text-slate-500; }
+  .page-title { @apply text-xl font-medium text-slate-900; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton { @apply animate-pulse rounded bg-slate-200/70; }
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
