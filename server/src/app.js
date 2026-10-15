@@ -23,13 +23,28 @@ const clientDist = path.resolve(__dirname, '../../client/dist');
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+
+// Health check endpoint for cloud orchestrators (Render) - respond instantly
+app.get('/api/health', (req, res) => res.status(200).json({ ok: true }));
+
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: false,
   })
 );
-app.use(cors({ origin: env.clientUrl || true, credentials: true }));
+
+// Safe CORS handling: never set invalid characters or headers for requests without origin
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // If request has no origin header (health probes, curl, same-origin fetch)
+      if (!origin) return callback(null, false);
+      return callback(null, origin);
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 if (!env.isProd) app.use(morgan('dev'));
@@ -37,7 +52,6 @@ if (!env.isProd) app.use(morgan('dev'));
 // avatars are public images; task attachments are NOT served statically (see tasks route)
 app.use('/uploads/avatars', express.static(AVATAR_DIR, { maxAge: '1d' }));
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api', apiLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
