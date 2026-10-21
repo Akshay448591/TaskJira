@@ -1,0 +1,68 @@
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: taskjira-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: taskjira
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - taskjira-net
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.runCommand(\"ping\").ok' --quiet || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: taskjira-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongo:27017/taskjira
+      CLIENT_URL: http://localhost
+      JWT_ACCESS_SECRET: default-docker-taskjira-jwt-access-secret-32-chars-long
+      JWT_REFRESH_SECRET: default-docker-taskjira-jwt-refresh-secret-32-chars-long
+      UPLOAD_DIR: uploads
+      MAIL_FROM: "TaskJira <no-reply@taskjira.local>"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - taskjira-net
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: taskjira-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - taskjira-net
+
+volumes:
+  mongo_data:
+    name: taskjira_mongo_data
+  uploads_data:
+    name: taskjira_uploads_data
+
+networks:
+  taskjira-net:
+    name: taskjira_network
+    driver: bridge
