@@ -7,6 +7,7 @@ export const apiLimiter = rateLimit({
   limit: 600,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   message: json('Too many requests, please slow down.'),
 });
 
@@ -16,5 +17,6 @@ export const authLimiter = rateLimit({
   limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   message: json('Too many attempts. Try again in a few minutes.'),
 });
