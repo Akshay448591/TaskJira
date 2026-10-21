@@ -1,0 +1,167 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -----------------------------------------------------------
+  # Stage 1: Validation and Dependency Audit
+  # -----------------------------------------------------------
+  validate:
+    name: Code & Dependency Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Audit Project Configuration
+        run: |
+          node -e "console.log('Node Runtime:', process.version)"
+          test -f render.yaml || (echo 'Missing render.yaml' && exit 1)
+
+  # -----------------------------------------------------------
+  # Stage 2: Unit and Integration Testing
+  # -----------------------------------------------------------
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand(\"ping\").ok' --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          npm --prefix server ci
+          npm --prefix client ci
+
+      - name: Run Test Suites (Server & Client)
+        env:
+          NODE_ENV: test
+          PORT: 5000
+          MONGO_URI: mongodb://127.0.0.1:27017/taskjira_test
+          JWT_ACCESS_SECRET: ci-test-jwt-access-secret-32-chars-long
+          JWT_REFRESH_SECRET: ci-test-jwt-refresh-secret-32-chars-long
+          CLIENT_URL: http://localhost:5173
+        run: npm test
+
+  # -----------------------------------------------------------
+  # Stage 3: Client Production Build Validation
+  # -----------------------------------------------------------
+  build:
+    name: Production Asset Compilation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Client Dependencies
+        run: npm --prefix client ci
+
+      - name: Compile Client SPA
+        run: npm run build
+
+      - name: Verify Build Artifacts
+        run: |
+          test -f client/dist/index.html || (echo 'client/dist/index.html not generated' && exit 1)
+          echo "Client production bundle generated successfully."
+
+  # -----------------------------------------------------------
+  # Stage 4: Docker Container Validation
+  # -----------------------------------------------------------
+  docker:
+    name: Docker Container Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose Specification
+        run: docker compose config
+
+      - name: Build Server Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: false
+          tags: taskjira-server:test
+
+      - name: Build Client Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          file: ./client/Dockerfile
+          push: false
+          tags: taskjira-client:test
+
+  # -----------------------------------------------------------
+  # Stage 5: Render Automated Deployment Trigger
+  # -----------------------------------------------------------
+  deploy:
+    name: Trigger Render Deployment
+    needs: [test, build, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Render via Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "WARNING: RENDER_DEPLOY_HOOK_URL secret is not set in GitHub repository secrets."
+            echo "To enable automatic deployment triggers, navigate to Repository Settings -> Secrets and variables -> Actions, and add RENDER_DEPLOY_HOOK_URL."
+            exit 0
+          fi
+
+          echo "Triggering Render automated deployment..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
+          HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "Render Response Code: $HTTP_STATUS"
+          echo "Render Response Body: $HTTP_BODY"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Deployment trigger acknowledged by Render successfully."
+          else
+            echo "Failed to trigger Render deployment: HTTP status $HTTP_STATUS"
+            exit 1
+          fi
