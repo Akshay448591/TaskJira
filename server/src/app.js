@@ -6,10 +6,13 @@ import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import { env } from './config/env.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/error.js';
 import { AVATAR_DIR } from './middleware/upload.js';
+import { observabilityMiddleware } from './middleware/observability.js';
+import { getMetrics, getMetricsContentType } from './utils/metrics.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import invitationRoutes from './routes/invitations.js';
@@ -24,8 +27,55 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
-// Health check endpoint for cloud orchestrators (Render) - respond instantly
-app.get('/api/health', (req, res) => res.status(200).json({ ok: true }));
+// Observability and request tracing middleware
+app.use(observabilityMiddleware);
+
+// Enhanced Health check endpoint with deep subsystem diagnostics
+app.get('/api/health', async (req, res) => {
+  const start = Date.now();
+  let dbStatus = 'disconnected';
+  let dbLatencyMs = null;
+
+  try {
+    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+      await mongoose.connection.db.admin().ping();
+      dbStatus = 'connected';
+      dbLatencyMs = Date.now() - start;
+    }
+  } catch {
+    dbStatus = 'error';
+  }
+
+  const memory = process.memoryUsage();
+  const isHealthy = dbStatus === 'connected' || mongoose.connection.readyState === 1;
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'ok' : 'degraded',
+    ok: isHealthy, // backwards compatibility
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    database: {
+      status: dbStatus,
+      latencyMs: dbLatencyMs,
+    },
+    memory: {
+      rssMb: parseFloat((memory.rss / (1024 * 1024)).toFixed(2)),
+      heapUsedMb: parseFloat((memory.heapUsed / (1024 * 1024)).toFixed(2)),
+      heapTotalMb: parseFloat((memory.heapTotal / (1024 * 1024)).toFixed(2)),
+    },
+  });
+});
+
+// Prometheus metrics exposition endpoint
+app.get('/api/metrics', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', getMetricsContentType());
+    res.send(await getMetrics());
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 app.use(
   helmet({
@@ -47,7 +97,7 @@ app.use(
 );
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
-if (!env.isProd) app.use(morgan('dev'));
+if (!env.isProd && process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 
 // avatars are public images; task attachments are NOT served statically (see tasks route)
 app.use('/uploads/avatars', express.static(AVATAR_DIR, { maxAge: '1d' }));

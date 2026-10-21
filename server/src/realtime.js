@@ -6,6 +6,7 @@ import { Membership } from './models/Membership.js';
 import { Project } from './models/Project.js';
 import { Task } from './models/Task.js';
 import { isId } from './utils/ApiError.js';
+import { activeSocketConnections } from './utils/metrics.js';
 
 /*
  * Rooms (every join is authorised against the database):
@@ -76,6 +77,7 @@ export function initRealtime(server) {
   });
 
   io.on('connection', (socket) => {
+    activeSocketConnections.inc();
     const me = socket.data.user;
     socket.join(`user:${me._id}`);
     // events of one socket are handled strictly in order (e.g. "join project" always finishes before "viewing project")
@@ -124,6 +126,7 @@ export function initRealtime(server) {
     }));
 
     socket.on('disconnect', () => {
+      activeSocketConnections.dec();
       for (const wid of new Set(socket.data.rooms.values())) removePresence(socket, wid);
     });
   });
