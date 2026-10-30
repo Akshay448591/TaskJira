@@ -28,7 +28,7 @@ const SECTIONS = { tasks: 'All tasks', task: 'Task', search: 'Search', analytics
 
 function NavItem({ to, end, icon, children, onClick }) {
   return (
-    <NavLink to={to} end={end} onClick={onClick} className={({ isActive }) => `flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${isActive ? 'bg-slate-100 font-medium text-slate-900' : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'}`}>
+    <NavLink to={to} end={end} onClick={onClick} className={({ isActive }) => `flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${isActive ? 'bg-slate-900/[0.07] font-medium text-slate-900' : 'text-slate-600 hover:bg-slate-900/[0.04] hover:text-slate-900'}`}>
       <Icon name={icon} size={16} className="text-slate-500" />{children}
     </NavLink>
   );
@@ -47,8 +47,8 @@ function WorkspaceSwitcher({ workspace }) {
   }, [open]);
   return (
     <div className="relative" ref={box}>
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left hover:bg-slate-100">
-        {workspace ? <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md bg-slate-900 text-xs font-medium text-white">{workspace.name.trim().charAt(0).toUpperCase()}</span> : <Logo size={26} />}
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-slate-900/[0.05]">
+        {workspace ? <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-slate-900 text-xs font-medium text-white">{workspace.name.trim().charAt(0).toUpperCase()}</span> : <Logo size={26} />}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium leading-4 text-slate-900">{workspace ? workspace.name : 'TaskJira'}</span>
           {workspace && <span className="block text-xs capitalize leading-4 text-slate-500">{workspace.role}</span>}
@@ -155,7 +155,7 @@ export default function AppShell() {
       <div className="px-2 pb-2 pt-3"><WorkspaceSwitcher workspace={workspaceId ? workspace : null} /></div>
       {workspaceId && (
         <div className="space-y-1.5 px-3 pb-2">
-          <button onClick={() => setPalette(true)} className="flex w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-500 transition-colors hover:border-slate-300">
+          <button onClick={() => setPalette(true)} className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-500 shadow-card transition-colors hover:border-slate-300">
             <Icon name="search" size={14} /><span>Search</span><span className="kbd ml-auto">Ctrl K</span>
           </button>
         </div>
@@ -201,15 +201,15 @@ export default function AppShell() {
       <WorkspaceCtx.Provider value={workspace ? { workspace, setWorkspace, role, members, reloadMembers: reload, online } : null}>
         <TopProgress />
         <div className="flex h-dvh overflow-hidden">
-          <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">{sidebar}</aside>
+          <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200/70 bg-side md:flex">{sidebar}</aside>
           {mobile && (
             <div className="fixed inset-0 z-40 md:hidden" data-modal>
               <div className="absolute inset-0 animate-fade-in bg-slate-900/30" onClick={() => setMobile(false)} />
-              <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] animate-fade-in flex-col border-r border-slate-200 bg-white">{sidebar}</aside>
+              <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] animate-fade-in flex-col border-r border-slate-200/70 bg-side shadow-pop">{sidebar}</aside>
             </div>
           )}
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4">
+            <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-slate-200/70 bg-white/90 px-4 backdrop-blur">
               <div className="flex min-w-0 items-center gap-2">
                 <button className="btn-ghost !h-8 !w-8 !px-0 md:hidden" aria-label="Open menu" onClick={() => setMobile(true)}><Icon name="menu" size={18} /></button>
                 <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">

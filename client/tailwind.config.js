@@ -26,6 +26,7 @@ export default {
       },
       colors: {
         slate: ramp('slate', STEPS), // warm paper neutrals
+        side: v('side'), // sidebar surface
         brand: ramp('brand', [50, 100, 500, 600, 700]), // navy accent
         red: hue(8, 56),
         green: hue(152, 36),
@@ -39,7 +40,10 @@ export default {
         pink: hue(336, 36),
         teal: hue(176, 40),
       },
-      boxShadow: { pop: '0 8px 24px rgb(31 29 26 / 0.12), 0 2px 6px rgb(31 29 26 / 0.08)' },
+      boxShadow: {
+        card: '0 1px 2px rgb(32 31 28 / 0.04), 0 1px 1px rgb(32 31 28 / 0.02)',
+        pop: '0 12px 32px rgb(32 31 28 / 0.12), 0 2px 8px rgb(32 31 28 / 0.06)',
+      },
       keyframes: {
         'fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
         'slide-in': { from: { transform: 'translateX(24px)', opacity: 0 }, to: { transform: 'none', opacity: 1 } },
